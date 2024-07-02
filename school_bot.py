@@ -25,8 +25,61 @@ class Form(StatesGroup):
 # Команда /start
 @dp.message(Command("start"))
 async def cmd_start(message: Message, state: FSMContext):
-    await message.answer("Привет! Как тебя зовут?")
+    await message.answer(
+        "Привет! Я бот для сбора данных учеников. Используй команды:\n"
+        "/start - начать работу\n"
+        "/help - помощь и описание команд\n"
+        "/my_data - показать мои данные\n"
+        "/all_data - показать данные всех учеников\n"
+        "Сейчас давай начнем с твоих данных. Как тебя зовут?"
+    )
     await state.set_state(Form.name)
+
+
+# Команда /help
+@dp.message(Command("help"))
+async def cmd_help(message: Message):
+    await message.answer(
+        "Я бот для сбора данных учеников. Вот доступные команды:\n"
+        "/start - начать работу\n"
+        "/help - помощь и описание команд\n"
+        "/my_data - показать мои данные\n"
+        "/all_data - показать данные всех учеников"
+    )
+
+
+# Команда /my_data
+@dp.message(Command("my_data"))
+async def my_data(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    conn = sqlite3.connect('school_data.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM students WHERE id=?", (user_id,))
+    data = cursor.fetchone()
+    conn.close()
+
+    if data:
+        await message.answer(f"Твои данные:\nИмя: {data[1]}\nВозраст: {data[2]}\nКласс: {data[3]}")
+    else:
+        await message.answer("Ты еще не ввел свои данные. Используй /start чтобы начать.")
+
+
+# Команда /all_data
+@dp.message(Command("all_data"))
+async def all_data(message: Message):
+    conn = sqlite3.connect('school_data.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM students")
+    all_students = cursor.fetchall()
+    conn.close()
+
+    if all_students:
+        response = "Данные всех учеников:\n"
+        for student in all_students:
+            response += f"ID: {student[0]}, Имя: {student[1]}, Возраст: {student[2]}, Класс: {student[3]}\n"
+        await message.answer(response)
+    else:
+        await message.answer("Нет данных учеников.")
 
 
 # Получение имени
@@ -55,18 +108,18 @@ async def process_grade(message: Message, state: FSMContext):
     await state.update_data(grade=message.text)
     user_data = await state.get_data()
 
-    await save_data(user_data)
+    await save_data(user_data, message.from_user.id)
 
     await message.answer("Спасибо! Твои данные сохранены.")
     await state.clear()
 
 
 # Сохранение данных в базу данных
-async def save_data(user_data):
+async def save_data(user_data, user_id):
     conn = sqlite3.connect('school_data.db')
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO students (name, age, grade) VALUES (?, ?, ?)",
-                   (user_data['name'], user_data['age'], user_data['grade']))
+    cursor.execute("INSERT OR REPLACE INTO students (id, name, age, grade) VALUES (?, ?, ?, ?)",
+                   (user_id, user_data['name'], user_data['age'], user_data['grade']))
     conn.commit()
     conn.close()
 
