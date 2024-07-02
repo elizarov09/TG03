@@ -1,10 +1,10 @@
 import sqlite3
-from aiogram import Bot, Dispatcher, types, F
+from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import Message
+from aiogram.types import BotCommand, Message
 
 # Укажите токен вашего бота
 API_TOKEN = '7055051091:AAE8zmUdXdAqRUs9dRJZa4B1xZzRNp6Fkh4'
@@ -124,8 +124,20 @@ async def save_data(user_data, user_id):
     conn.close()
 
 
+# Установка команд в меню бота
+async def set_commands(bot: Bot):
+    commands = [
+        BotCommand(command="/start", description="Запустить бота"),
+        BotCommand(command="/help", description="Помощь по использованию бота"),
+        BotCommand(command="/my_data", description="Показать мои данные"),
+        BotCommand(command="/all_data", description="Показать данные всех учеников"),
+    ]
+    await bot.set_my_commands(commands)
+
+
 # Запуск бота
 async def main():
+    await set_commands(bot)
     await dp.start_polling(bot)
 
 
